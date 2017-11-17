@@ -37,9 +37,11 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryViewHolder> {
 
     private static final int MAP_ZOOM = 3;
     private final List<Gallery> mGalleryCollection;
+    private final String mItemViewBase;
     private final String mDescriptionContainerBase;
     private final String mDetailTransitionBase;
     private final String mDescriptionTitleBase;
+    private final String mMapBase;
     private final OnMapReadyCallback mInitialOnMapReadyCallback = new OnMapReadyCallback() {
         @Override
         public void onMapReady(GoogleMap googleMap) {
@@ -50,9 +52,11 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryViewHolder> {
 
     public GalleryAdapter(@NonNull List<Gallery> data, @NonNull Context context) {
         mGalleryCollection = data;
+        mItemViewBase = context.getString(R.string.transition_item_view);
         mDescriptionContainerBase = context.getString(R.string.transition_description);
         mDetailTransitionBase = context.getString(R.string.transition_description_detail);
         mDescriptionTitleBase = context.getString(R.string.transition_description_title);
+        mMapBase = context.getString(R.string.transition_map);
     }
 
     @Override
@@ -60,7 +64,7 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryViewHolder> {
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.gallery_item, parent, false);
         GalleryViewHolder holder = new GalleryViewHolder(v);
-        initializeMapView(holder.mMapView);
+        initializeMapView(holder.mapView);
         return holder;
     }
 
@@ -80,31 +84,32 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryViewHolder> {
         // Set transition names here and not in the layout declaration,
         // because multiple identical transition names at the same time
         // confuse the transition system.
-        holder.mDescriptionContainer.setTransitionName(mDescriptionContainerBase + adapterPosition);
-        holder.mDescriptionText.setTransitionName(mDescriptionTitleBase + adapterPosition);
-        holder.mTitleText.setTransitionName(mDetailTransitionBase + adapterPosition);
+        holder.itemView.setTransitionName(mItemViewBase + adapterPosition);
+        holder.descriptionContainer.setTransitionName(mDescriptionContainerBase + adapterPosition);
+        holder.descriptionText.setTransitionName(mDescriptionTitleBase + adapterPosition);
+        holder.titleText.setTransitionName(mDetailTransitionBase + adapterPosition);
+        holder.mapView.setTransitionName(mMapBase + adapterPosition);
 
         // Bind the user visible information.
-        holder.mTitleText.setText(gallery.getTitle());
-        holder.mDescriptionText.setText(gallery.getDescription());
-        holder.mMapView.getMapAsync(new OnMapReadyCallback() {
+        holder.titleText.setText(gallery.getTitle());
+        holder.descriptionText.setText(gallery.getDescription());
+        final MapView mapView = holder.mapView;
+
+        mapView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
                 googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(gallery.getPosition(),
                         MAP_ZOOM));
                 googleMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+                mapView.setVisibility(View.VISIBLE);
             }
         });
     }
 
     @Override
     public void onViewRecycled(GalleryViewHolder holder) {
-        MapView mapView = holder.mMapView;
-        GoogleMap map;
-        //noinspection deprecation
-        if (mapView != null && (map = mapView.getMap()) != null) {
-            map.setMapType(GoogleMap.MAP_TYPE_NONE);
-        }
+        // Avoid map glitches provoked due to scrolling behavior.
+        holder.mapView.setVisibility(View.INVISIBLE);
     }
 
     @Override

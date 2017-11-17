@@ -30,7 +30,9 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.ViewCompat;
 import android.support.v4.view.animation.FastOutLinearInInterpolator;
 import android.support.v7.widget.RecyclerView;
+import android.transition.Explode;
 import android.transition.Fade;
+import android.transition.TransitionSet;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -45,6 +47,7 @@ import com.google.samples.apps.ourstreets.R;
 import com.google.samples.apps.ourstreets.data.DataView;
 import com.google.samples.apps.ourstreets.data.GalleryPresenter;
 import com.google.samples.apps.ourstreets.model.Gallery;
+import com.google.samples.apps.ourstreets.transition.Elevation;
 import com.google.samples.apps.ourstreets.view.GalleryAdapter;
 import com.google.samples.apps.ourstreets.view.GalleryDivider;
 import com.google.samples.apps.ourstreets.view.GalleryViewHolder;
@@ -72,7 +75,23 @@ public class GalleryFragment extends Fragment implements DataView<Gallery> {
     private boolean mAnimateViewSwap;
 
     public GalleryFragment() {
-        setExitTransition(new Fade());
+
+        final Fade fade = new Fade();
+        fade.addTarget(R.id.appbar);
+
+        Explode explode = new Explode();
+        explode.excludeTarget(R.id.appbar, true);
+
+        Elevation elevation = new Elevation();
+        elevation.addTarget(R.id.gallery_card);
+        elevation.setStartDelay(250); // arbitrarily chosen delay
+
+        TransitionSet exit = new TransitionSet();
+        exit.addTransition(fade);
+        exit.addTransition(explode);
+        exit.addTransition(elevation);
+
+        setExitTransition(exit);
     }
 
     public static GalleryFragment newInstance() {
@@ -106,7 +125,7 @@ public class GalleryFragment extends Fragment implements DataView<Gallery> {
         mRecyclerView = null;
         mEmptyView = null;
         mGalleryContent = null;
-        super.onDetach();
+        super.onDestroyView();
     }
 
     @Override
@@ -138,8 +157,8 @@ public class GalleryFragment extends Fragment implements DataView<Gallery> {
         mRecyclerView.addOnItemTouchListener(
                 new RecyclerItemClickListener(getActivity()) {
                     @Override
-                    public void onItemClick(RecyclerView.ViewHolder itemHolder, int position) {
-                        showDetailFragment((GalleryViewHolder) itemHolder,
+                    public void onItemClick(RecyclerView.ViewHolder holder, int position) {
+                        showDetailFragment((GalleryViewHolder) holder,
                                 mGalleries.get(position));
                     }
                 });
@@ -170,13 +189,15 @@ public class GalleryFragment extends Fragment implements DataView<Gallery> {
         }
     }
 
-    private void showDetailFragment(@NonNull final GalleryViewHolder itemHolder,
+    private void showDetailFragment(@NonNull final GalleryViewHolder holder,
                                     @NonNull final Gallery gallery) {
-        itemHolder.mMapView.getMapAsync(new OnMapReadyCallback() {
+        // Turn of transition grouping for clicked item view to break card structure.
+        ((ViewGroup) holder.itemView).setTransitionGroup(false);
+        holder.mapView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
                 CameraPosition cameraPosition = googleMap.getCameraPosition();
-                performDetailTransition(itemHolder, gallery, cameraPosition);
+                performDetailTransition(holder, gallery, cameraPosition);
             }
         });
     }
@@ -208,12 +229,10 @@ public class GalleryFragment extends Fragment implements DataView<Gallery> {
 
     private void createAndAddTransitionParticipants(@NonNull GalleryViewHolder itemHolder,
                                                     @NonNull FragmentTransaction transaction) {
-        transaction.addSharedElement(itemHolder.mDescriptionContainer,
+        transaction.addSharedElement(itemHolder.descriptionContainer,
                 getString(R.string.transition_description));
-        transaction.addSharedElement(itemHolder.mTitleText,
-                getString(R.string.transition_description_title));
-        transaction.addSharedElement(itemHolder.mDescriptionText,
-                getString(R.string.transition_description_detail));
+        transaction.addSharedElement(itemHolder.mapView,
+                getString(R.string.transition_map));
     }
 
     /**

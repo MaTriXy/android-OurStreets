@@ -24,6 +24,7 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.transition.ChangeBounds;
+import android.transition.Fade;
 import android.transition.Transition;
 import android.transition.TransitionInflater;
 import android.transition.TransitionManager;
@@ -84,8 +85,9 @@ public class DetailFragment extends Fragment implements DataView<Detail> {
         args.putParcelable(IntentKeys.CAMERA_POSITION, cameraPosition);
         fragment.setArguments(args);
         final TransitionInflater inflater = TransitionInflater.from(context);
-        final Transition sharedEnter = inflater.inflateTransition(R.transition.detail_enter);
-        fragment.setSharedElementEnterTransition(sharedEnter);
+        fragment.setSharedElementEnterTransition(
+                inflater.inflateTransition(R.transition.detail_shared_enter));
+        fragment.setEnterTransition(new Fade());
         return fragment;
     }
 
@@ -134,6 +136,31 @@ public class DetailFragment extends Fragment implements DataView<Detail> {
     @Override
     public void onViewCreated(final View view, Bundle savedInstanceState) {
         mDescriptionChange = new ChangeBounds();
+        mDescriptionChange.addListener(new Transition.TransitionListener() {
+            @Override
+            public void onTransitionStart(Transition transition) {
+            }
+
+            @Override
+            public void onTransitionEnd(Transition transition) {
+                applyMapPadding();
+            }
+
+            @Override
+            public void onTransitionCancel(Transition transition) {
+
+            }
+
+            @Override
+            public void onTransitionPause(Transition transition) {
+
+            }
+
+            @Override
+            public void onTransitionResume(Transition transition) {
+
+            }
+        });
         if (ViewUtils.isMainDisplayInLandscape(getContext())) {
             ViewUtils.applyTopWindowInsetsForView(view.findViewById(R.id.description_layout));
         }
@@ -143,6 +170,20 @@ public class DetailFragment extends Fragment implements DataView<Detail> {
         } else {
             setDescriptionText(mSelectedDetail);
         }
+        applyMapPadding();
+    }
+
+    private void applyMapPadding() {
+        if (mMapView == null) {
+            return;
+        }
+        mMapView.getMapAsync(new OnMapReadyCallback() {
+            @Override
+            public void onMapReady(GoogleMap googleMap) {
+                View descriptionLayout = getView().findViewById(R.id.description_layout);
+                googleMap.setPadding(0, 0, 0, descriptionLayout.getMeasuredHeight());
+            }
+        });
     }
 
     @Override
